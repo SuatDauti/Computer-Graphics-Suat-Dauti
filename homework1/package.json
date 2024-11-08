@@ -1,0 +1,17 @@
+{
+  "name": "homework1",
+  "version": "1.0.0",
+  "description": "3D Campus Model using Three.js, GSAP, and OrbitControls",
+  "main": "main.js",
+  "scripts": {
+    "start": "parcel index.html --open",
+    "build": "parcel build index.html"
+  },
+  "dependencies": {
+    "three": "^0.155.0",
+    "gsap": "^3.11.5"
+  },
+  "devDependencies": {
+    "parcel": "^2.9.3"
+  }
+}
