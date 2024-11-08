@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import gsap from "gsap";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -8,12 +9,13 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.set(0, 10, 0);
+camera.position.set(0, 10, 10);
 camera.lookAt(scene.position);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x1b2a2f);
+renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -41,6 +43,7 @@ const roadA = new THREE.Mesh(roadGeometry, roadMaterial);
 const roadB = new THREE.Mesh(roadGeometry, roadMaterial);
 
 ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
 buildingIT.position.set(3.2, 1, 2);
 buildingIT.rotation.z = 2.1;
 centerCircle.position.set(0, 0.001, 0);
@@ -51,6 +54,11 @@ buildingFofCS.position.set(-2.5, 1, 2);
 buildingFofCS.rotation.z = -1.6;
 buildingA.position.set(-1.5, 0.5, -2);
 buildingB.position.set(-1.5, 0.5, -4.5);
+
+[buildingIT, buildingA, buildingB, buildingFofCS].forEach((building) => {
+  building.castShadow = true;
+  building.receiveShadow = true;
+});
 
 scene.add(
   ground,
@@ -75,26 +83,55 @@ scene.add(
   mesh.rotation.x = -Math.PI / 2;
 });
 
-scene.traverse((object) => {
-  if (object instanceof THREE.Mesh) {
-    const outlineMaterial = object.material.clone();
-    outlineMaterial.color = new THREE.Color(object.material.color).offsetHSL(
-      0,
-      0,
-      -0.25
-    );
-    outlineMaterial.side = THREE.BackSide;
+const pathPoints = [
+  new THREE.Vector3(0, 0.5, -4),
+  new THREE.Vector3(0, 0, 0),
+  new THREE.Vector3(1.5, 0.5, 2.5),
+];
+const path = new THREE.CatmullRomCurve3(pathPoints);
+path.closed = false;
 
-    const outlineMesh = object.clone();
-    outlineMesh.material = outlineMaterial;
-    outlineMesh.scale.multiplyScalar(1.05);
-    scene.add(outlineMesh);
-  }
-});
+const movingCylinder = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.3, 0.3, 1, 32),
+  new THREE.MeshStandardMaterial({ color: 0xff6347 })
+);
+movingCylinder.castShadow = true;
+scene.add(movingCylinder);
+
+function animateCylinder() {
+  const animationDuration = 8;
+
+  gsap.to(
+    { progress: 0 },
+    {
+      progress: 1,
+      duration: animationDuration,
+      repeat: -1,
+      yoyo: true,
+      ease: "power1.inOut",
+      onUpdate: function () {
+        const position = path.getPointAt(this.targets()[0].progress);
+        movingCylinder.position.set(position.x, position.y, position.z);
+
+        const tangent = path
+          .getTangentAt(this.targets()[0].progress)
+          .normalize();
+        movingCylinder.lookAt(
+          position.x + tangent.x,
+          position.y + tangent.y,
+          position.z + tangent.z
+        );
+      },
+    }
+  );
+}
+
+animateCylinder();
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 2);
 const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
 directionalLight.position.set(10, 10, 10);
+directionalLight.castShadow = true;
 scene.add(ambientLight, directionalLight);
 
 function renderLoop() {
